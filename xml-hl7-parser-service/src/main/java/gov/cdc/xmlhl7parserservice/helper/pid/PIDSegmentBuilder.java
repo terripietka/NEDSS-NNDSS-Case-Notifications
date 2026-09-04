@@ -47,9 +47,25 @@ public class PIDSegmentBuilder {
                 pid.getPid5_PatientName(0).getNameTypeCode().setValue(messageElement.getDataElement().getIdDataType().getIdCodedValue());
             }
         } else if (pidField.startsWith("PID-7.0")) {
-            pidFieldValue = messageElement.getDataElement().getTsDataType().getTime().toString();
-            String dateFormat = dateFormatUtil.formatDate(pidFieldValue, questionDataTypeNND, questionIdentifierNND, "PID-7");
-            pid.getPid7_DateTimeOfBirth().getTime().setValue(dateFormat);
+
+            // Birth date is represented as YYYYMMDD for legacy PHIN v2 messages.
+            String rawBirthDate = messageElement.getDataElement()
+                    .getTsDataType()
+                    .getTime()
+                    .toString();
+
+            String birthDate;
+
+            if (rawBirthDate.length() >= 10) {
+                birthDate = rawBirthDate.substring(0, 10).replace("-", "");
+            } else {
+                birthDate = rawBirthDate.replace("-", "");
+            }
+
+            pid.getPid7_DateTimeOfBirth()
+                    .getTime()
+                    .setValue(birthDate);
+
         } else if (pidField.startsWith("PID-8.0") && messageElement.getDataElement().getIsDataType() != null) {
             pid.getPid8_AdministrativeSex().setValue(messageElement.getDataElement().getIsDataType().getIsCodedValue());
         } else if (pidField.startsWith("PID-10.0")) {

@@ -49,14 +49,18 @@ public class OBRSegmentBuilder {
             messageState.setFillerOrderNumberUniversalIDType2(messageElement.getDataElement().getIdDataType().getIdCodedValue());
         }else if (obrField.startsWith("OBR-4.1") && Objects.equals(orderGroupID, "1")) {
             obr.getObr4_UniversalServiceIdentifier().getIdentifier().setValue("68991-9");
-            messageState.setUniversalServiceIdentifierGroup1(messageState.getEntityIdentifier2());
+            messageState.setUniversalServiceIdentifierGroup1(
+                messageElement.getDataElement().getStDataType().getStringData().trim());
         }else if (obrField.startsWith("OBR-4.1") && Objects.equals(orderGroupID, "2")){
-            messageState.setUniversalServiceIdentifierGroup2(messageState.getEntityIdentifier2());
+            messageState.setUniversalServiceIdentifierGroup2(
+                messageElement.getDataElement().getStDataType().getStringData().trim());
         }else if (obrField.startsWith("OBR-4.2") && Objects.equals(orderGroupID, "1")){
             obr.getObr4_UniversalServiceIdentifier().getText().setValue("Epidemiologic Information");
-            messageState.setUniversalServiceIDTextGroup1(messageState.getEntityIdentifier2());
+            messageState.setUniversalServiceIDTextGroup1(
+                messageElement.getDataElement().getStDataType().getStringData().trim());
         }else if (obrField.startsWith("OBR-4.2") && Objects.equals(orderGroupID, "2")){
-            messageState.setUniversalServiceIdentifierGroup2(messageState.getEntityIdentifier2());
+            messageState.setUniversalServiceIDTextGroup2(
+                messageElement.getDataElement().getStDataType().getStringData().trim());
         }else if (obrField.startsWith("OBR-4.3") && Objects.equals(orderGroupID, "1")){
             obr.getObr4_UniversalServiceIdentifier().getNameOfCodingSystem().setValue("LN");
             messageState.setUniversalServiceIDNameOfCodingSystemGroup1(messageElement.getDataElement().getIdDataType().getIdCodedValue());
@@ -74,7 +78,9 @@ public class OBRSegmentBuilder {
             String dateFormat = dateFormatUtil.formatDate(messageState.getResultStatusChgTime(), questionDataTypeNND, questionIdentifierNND, "OBR-22.0");
             obr.getObr22_ResultsRptStatusChngDateTime().getTime().setValue(dateFormat);
         }else if (obrField.startsWith("OBR-25.0")){
-            obr.getObr25_ResultStatus().setValue(messageElement.getDataElement().getIdDataType().getIdCodedValue());
+            String resultStatus = messageElement.getDataElement().getIdDataType().getIdCodedValue();
+            messageState.setResultStatus(resultStatus);
+            obr.getObr25_ResultStatus().setValue(resultStatus);
         }else if (obrField.startsWith("OBR-31.0")){
             String conditionCode = messageElement.getDataElement().getCeDataType().getCeCodedValue().trim();
 
@@ -115,7 +121,7 @@ public class OBRSegmentBuilder {
 
             messageState.setReasonForStudyIdentifier2(messageElement.getDataElement().getCeDataType().getCeCodedValue());
             messageState.setReasonForStudyText2(messageElement.getDataElement().getCeDataType().getCeCodedValueDescription());
-            messageState.setReasonForStudyNameOfCodingSystem2(messageElement.getDataElement().getCeDataType().getCeLocalCodedValueCodingSystem());
+            messageState.setReasonForStudyNameOfCodingSystem2(messageElement.getDataElement().getCeDataType().getCeCodedValueCodingSystem());
             messageState.setReasonForStudyAlternateIdentifier2(messageElement.getDataElement().getCeDataType().getCeLocalCodedValue());
             messageState.setReasonForStudyAlternateText2(messageElement.getDataElement().getCeDataType().getCeLocalCodedValueDescription());
             messageState.setReasonForStudyNameOfAlternateCodingSystem2(messageElement.getDataElement().getCeDataType().getCeLocalCodedValueCodingSystem());

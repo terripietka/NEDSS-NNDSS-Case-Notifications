@@ -81,82 +81,87 @@ public class OBXSegmentBuilder {
             messageState.setObxInc(messageState.getObx2Inc());
             messageState.setObxOrderGroupID(1);
         }
-        List<ObxRepeatingElement> obxRepeatingElementArrayList = messageState.getObxRepeatingElementArrayList();
-        for (int x = 0; x < obxRepeatingElementArrayList.size(); x++) {
-            if (questionIdentifierNND.equals("INV290") || questionIdentifierNND.equals("INV291"))
-            {
-                obxFound = false;
-            }
-            else if (Objects.equals(obxRepeatingElementArrayList.get(x).getElementUid(), questionIdentifierNND))
-            {
-                if (messageElement.getQuestionGroupSeqNbr()!=null && messageElement.getQuestionGroupSeqNbr()!=null) {
-                    if (obxRepeatingElementArrayList.get(x).getQuestionGroupSeqNbr().equals(messageElement.getQuestionGroupSeqNbr().trim())
-                            && obxRepeatingElementArrayList.get(x).getObservationSubId().equals(messageElement.getObservationSubID().trim()))
-                    {
-                        obxFound = true;
-                    }
+        List<ObxRepeatingElement> obxRepeatingElementArrayList =
+                messageState.getObxRepeatingElementArrayList();
+
+        // obxFound must describe THIS message element, not the previous one.
+        obxFound = false;
+        ObxRepeatingElement matchedElement = null;
+
+        // These questions intentionally create separate OBX segments.
+        boolean forceNewObx =
+                questionIdentifierNND.equals("INV290")
+                || questionIdentifierNND.equals("INV291")
+                || questionIdentifierNND.equals("INV826")
+                || questionIdentifierNND.equals("INV827")
+                || questionIdentifier.equals("INV826b")
+                || questionIdentifier.equals("INV827b");
+
+        if (!forceNewObx) {
+
+            String questionGroupSeqNbr =
+                    messageElement.getQuestionGroupSeqNbr() == null
+                            ? null
+                            : messageElement.getQuestionGroupSeqNbr().trim();
+
+            String observationSubId =
+                    messageElement.getObservationSubID() == null
+                            ? null
+                            : messageElement.getObservationSubID().trim();
+
+            for (ObxRepeatingElement candidate : obxRepeatingElementArrayList) {
+
+                if (!Objects.equals(candidate.getElementUid(), questionIdentifierNND)) {
+                    continue;
                 }
-                else if ( messageElement.getQuestionGroupSeqNbr()==null && messageElement.getObservationSubID()!=null)
-                {
-                    if (obxRepeatingElementArrayList.get(x).getQuestionGroupSeqNbr().equals(messageElement.getQuestionGroupSeqNbr().trim())
-                            && obxRepeatingElementArrayList.get(x).getObservationSubId().equals(messageElement.getObservationSubID().trim()))
-                    {
-                        obxFound = true;
-                    }
-                }
-                else if (messageElement.getQuestionGroupSeqNbr()!=null && messageElement.getQuestionGroupSeqNbr()==null)
-                {
-                    if (obxRepeatingElementArrayList.get(x).getQuestionGroupSeqNbr().equals(messageElement.getQuestionGroupSeqNbr().trim())
-                            && obxRepeatingElementArrayList.get(x).getObservationSubId()==null)
-                    {
-                        obxFound = true;
-                    }
-                }
-                else if (messageElement.getQuestionGroupSeqNbr()==null && messageElement.getObservationSubID()==null)
-                {
+
+                String candidateGroupSeqNbr =
+                        candidate.getQuestionGroupSeqNbr() == null
+                                ? null
+                                : candidate.getQuestionGroupSeqNbr().trim();
+
+                String candidateObservationSubId =
+                        candidate.getObservationSubId() == null
+                                ? null
+                                : candidate.getObservationSubId().trim();
+
+                boolean groupMatches =
+                        Objects.equals(candidateGroupSeqNbr, questionGroupSeqNbr);
+
+                boolean subIdMatches =
+                        Objects.equals(candidateObservationSubId, observationSubId);
+
+                if (groupMatches && subIdMatches) {
                     obxFound = true;
-                }
+                    matchedElement = candidate;
 
-                //HEP specific code for repeating INV826/INV827
-                if (questionIdentifierNND.equals("INV826") || questionIdentifierNND.equals("INV827"))
-                {
-                    obxFound = false;
-                }
+                    candidate.setValueInc(candidate.getValueInc() + 1);
+                    obx5ValueInc = candidate.getValueInc();
+                    obxInc = candidate.getObxInc();
+                    obx5ObservationSubID = candidate.getObservationSubId();
 
-                if (questionIdentifier.equals("INV826b") || questionIdentifier.equals("INV827b"))
-                {
-                    obxFound = false;
+                    break;
                 }
-
-                if (obxFound) {
-                    //found existing element
-                    obxRepeatingElementArrayList.get(x).setValueInc(obxRepeatingElementArrayList.get(x).getValueInc() + 1);
-                    obx5ValueInc = obxRepeatingElementArrayList.get(x).getValueInc();
-                    obxInc = obxRepeatingElementArrayList.get(x).getObxInc();
-                    obx5ObservationSubID = obxRepeatingElementArrayList.get(x).getObservationSubId();
-                }
-
             }
         }
 
-        ObxRepeatingElement element = null;
-        Optional<ObxRepeatingElement> match = obxRepeatingElementArrayList.stream()
-                .filter(e -> messageElement.getQuestionIdentifierNND().equals(e.getElementUid()))
-                .findFirst();
-        if (match.isPresent()) {
-            element = match.get();
-        }
         OBX obx;
-        if (
-                obxFound
-            //                    element != null
-        )
-        {
-            int idx = element.getObxInc();
+
+        if (obxFound && matchedElement != null) {
+            int idx = matchedElement.getObxInc();
             obx = orderObservation.getOBSERVATION(idx).getOBX();
         }
         else {
-            obx = orderObservation.getOBSERVATION(orderObservation.getOBSERVATIONAll().size()).getOBX();
+            // No matching repeating element exists, so create a new OBX.
+            obxFound = false;
+
+            // A new OBX starts with the first OBX-5 repetition
+
+            obx5ValueInc = 0;
+
+            obx = orderObservation
+                    .getOBSERVATION(orderObservation.getOBSERVATIONAll().size())
+                    .getOBX();
         }
 
         if (!obxFound)
@@ -243,7 +248,8 @@ public class OBXSegmentBuilder {
         }
 
         // 77998-3 is the SN_WITH_UNIT
-        if (questionIdentifierNND.equals("SN_WITH_UNIT") || questionIdentifierNND.equals("77998-3"))
+        if (messageElement.getDataElement().getQuestionDataTypeNND().trim().equals("SN_WITH_UNIT")
+                || questionIdentifierNND.equals("77998-3"))
         {
             obx.getValueType().setValue("SN");
         }
@@ -251,6 +257,7 @@ public class OBXSegmentBuilder {
         {
             obx.getValueType().setValue(messageElement.getDataElement().getQuestionDataTypeNND().trim());
         }
+
 
         if (!obxFound)
         {
@@ -777,26 +784,37 @@ public class OBXSegmentBuilder {
                 }
             }
 
-            if (messageState.getMessageType().contains("Arbo_Case_Map_v1.0")|| messageState.getMessageType().contains("Gen_Case_Map_v1.0")
-                    || messageState.getMessageType().contains("TB_Case_Map_v2.0") || messageState.getMessageType().contains("Var_Case_Map_v2.0"))
+            if (messageState.getMessageType().contains("Arbo_Case_Map_v1.0")
+                    || messageState.getMessageType().contains("Gen_Case_Map_v1.0")
+                    || messageState.getMessageType().contains("TB_Case_Map_v2.0")
+                    || messageState.getMessageType().contains("Var_Case_Map_v2.0"))
             {
-                //TODO - 23329
                 Type obxValue = obx.getObservationValue(obx5ValueInc).getData();
                 CWE cweDatatype;
+
                 if (obxValue instanceof CWE) {
                     cweDatatype = (CWE) obxValue;
                 } else {
                     cweDatatype = new CWE(obx.getMessage());
                 }
 
-
-                if (codedValue.isEmpty()){
+                if (codedValue.isEmpty()) {
+                    cweDatatype.getCwe4_AlternateIdentifier().setValue(localCodedValue);
                     cweDatatype.getCwe5_AlternateText().setValue(localCodedValueDescription);
-                    obx.getObservationValue(obx5ValueInc).setData(cweDatatype);
-                }else{
-                    cweDatatype.getAlternateText().setValue(codedValue+"^"+codedValueDescription+"^"+codedValueCodingSystem+"^"+originalText);
-                    obx.getObservationValue(obx5ValueInc).setData(cweDatatype);
+                    cweDatatype.getCwe6_NameOfAlternateCodingSystem().setValue(localCodedValueCodingSystem);
+                } else {
+                    cweDatatype.getCwe1_Identifier().setValue(codedValue);
+                    cweDatatype.getCwe2_Text().setValue(codedValueDescription);
+                    cweDatatype.getCwe3_NameOfCodingSystem().setValue(codedValueCodingSystem);
+
+                    cweDatatype.getCwe4_AlternateIdentifier().setValue(localCodedValue);
+                    cweDatatype.getCwe5_AlternateText().setValue(localCodedValueDescription);
+                    cweDatatype.getCwe6_NameOfAlternateCodingSystem().setValue(localCodedValueCodingSystem);
                 }
+
+                cweDatatype.getCwe9_OriginalText().setValue(originalText);
+
+                obx.getObservationValue(obx5ValueInc).setData(cweDatatype);
             }
             else
             {
@@ -948,33 +966,58 @@ public class OBXSegmentBuilder {
                 obx.getObservationSubID().setValue("2");
             }
         }
-        //TS data type
+        // TS data type
         if (messageElement.getDataElement().getQuestionDataTypeNND().equals("TS"))
         {
             String timeOutput = "";
             Type obxValue = obx.getObservationValue(obx5ValueInc).getData();
             TS tsDataType;
+
             if (obxValue instanceof TS) {
                 tsDataType = (TS) obxValue;
             } else {
                 tsDataType = new TS(obx.getMessage());
             }
 
-            if (messageElement.getDataElement().getTsDataType().getYear() != null) {
+            if (questionIdentifierNND.equals("INV166")) {
+
+                // MMWR Year is represented as a four-digit year (YYYY),
+                // even though the messaging datatype is TS.
+                if (messageElement.getDataElement().getTsDataType().getYear() != null) {
+                    timeOutput = messageElement.getDataElement()
+                            .getTsDataType()
+                            .getYear()
+                            .trim();
+                } else {
+                    String rawTime = messageElement.getDataElement()
+                            .getTsDataType()
+                            .getTime()
+                            .toString();
+
+                    timeOutput = rawTime.length() >= 4
+                            ? rawTime.substring(0, 4)
+                            : rawTime;
+                }
+
+            } else if (messageElement.getDataElement().getTsDataType().getYear() != null) {
+
                 timeOutput = dateFormatUtil.formatDate(
                         messageElement.getDataElement().getTsDataType().getYear().trim(),
+                        messageElement.getDataElement().getQuestionDataTypeNND().trim(),
                         questionIdentifierNND,
-                        messageState.getMessageType(),
-                        messageElement.getDataElement().getQuestionDataTypeNND().trim()
+                        "OBX-5"
                 );
+
             } else {
+
                 timeOutput = dateFormatUtil.formatDate(
                         messageElement.getDataElement().getTsDataType().getTime().toString(),
+                        messageElement.getDataElement().getQuestionDataTypeNND().trim(),
                         questionIdentifierNND,
-                        messageState.getMessageType(),
-                        messageElement.getDataElement().getQuestionDataTypeNND().trim()
+                        "OBX-5"
                 );
             }
+
             tsDataType.getTs1_Time().setValue(timeOutput);
             obx.getObservationValue(obx5ValueInc).setData(tsDataType);
         }

@@ -63,6 +63,7 @@ public class MessageState {
     private String universalServiceIDNameOfCodingSystemGroup2 = "";
     private String observationDateTime = "";
     private String resultStatusChgTime = "";
+    private String resultStatus = "";
 
     // OBX-related state variables
     private int obxOrderGroupID = 0;
@@ -136,6 +137,7 @@ public class MessageState {
         universalServiceIDNameOfCodingSystemGroup2 = "";
         observationDateTime = "";
         resultStatusChgTime = "";
+        resultStatus = "";
 
         // Reset OBX variables
         obxOrderGroupID = 0;
