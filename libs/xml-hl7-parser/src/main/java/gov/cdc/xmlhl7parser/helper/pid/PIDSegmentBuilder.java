@@ -60,15 +60,14 @@ public class PIDSegmentBuilder {
             .setValue(messageElement.getDataElement().getIdDataType().getIdCodedValue());
       }
     } else if (pidField.startsWith("PID-7.0")) {
-        String rawBirthDate = messageElement.getDataElement()
-            .getTsDataType().getTime().toString();
-        String birthDate;
-        if (rawBirthDate.length() >= 10) {
-            birthDate = rawBirthDate.substring(0, 10).replace("-", "");
-        } else {
-            birthDate = rawBirthDate.replace("-", "");
-        }
-        pid.getPid7_DateTimeOfBirth().getTime().setValue(birthDate);
+      String rawBirthDate = messageElement.getDataElement().getTsDataType().getTime().toString();
+      String birthDate;
+      if (rawBirthDate.length() >= 10) {
+        birthDate = rawBirthDate.substring(0, 10).replace("-", "");
+      } else {
+        birthDate = rawBirthDate.replace("-", "");
+      }
+      pid.getPid7_DateTimeOfBirth().getTime().setValue(birthDate);
     } else if (pidField.startsWith("PID-8.0")
         && messageElement.getDataElement().getIsDataType() != null) {
       pid.getPid8_AdministrativeSex()

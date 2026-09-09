@@ -78,8 +78,6 @@ public class MSHSegmentBuilder {
     // Set message date/time - MSH-7
     LocalDateTime now = LocalDateTime.now();
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss.SSS");
-    // Set message date/time - MSH-7, including local UTC offset.
-
 
     String currentTime = now.format(formatter);
     msh.getDateTimeOfMessage().getTime().setValue(currentTime);
@@ -159,60 +157,60 @@ public class MSHSegmentBuilder {
   }
 
   public void setMultiProfileMSH21(MSH msh, MessageState messageState) throws DataTypeException {
-        // Repetition 0 is already populated while processing MSH-21.1 through MSH-21.4.
-        // For NND ORU v2, repetition 1 should contain the message-map profile.
-        if ("NND_ORU_v2.0".equals(messageState.getNndMessageVersion())) {
+    // Repetition 0 is already populated while processing MSH-21.1 through MSH-21.4.
+    // For NND ORU v2, repetition 1 should contain the message-map profile.
+    if ("NND_ORU_v2.0".equals(messageState.getNndMessageVersion())) {
 
-            msh.getMessageProfileIdentifier(1)
-                    .getEntityIdentifier()
-                    .setValue(messageState.getEntityIdentifierGroup2());
+      msh.getMessageProfileIdentifier(1)
+          .getEntityIdentifier()
+          .setValue(messageState.getEntityIdentifierGroup2());
 
-            msh.getMessageProfileIdentifier(1)
-                    .getNamespaceID()
-                    .setValue(messageState.getNameSpaceIDGroup2());
+      msh.getMessageProfileIdentifier(1)
+          .getNamespaceID()
+          .setValue(messageState.getNameSpaceIDGroup2());
 
-            msh.getMessageProfileIdentifier(1)
-                    .getUniversalID()
-                    .setValue(messageState.getUniversalIDGroup2());
+      msh.getMessageProfileIdentifier(1)
+          .getUniversalID()
+          .setValue(messageState.getUniversalIDGroup2());
 
-            msh.getMessageProfileIdentifier(1)
-                    .getUniversalIDType()
-                    .setValue(messageState.getUniversalIDTypeGroup2());
+      msh.getMessageProfileIdentifier(1)
+          .getUniversalIDType()
+          .setValue(messageState.getUniversalIDTypeGroup2());
 
-        } else {
+    } else {
 
-            // Preserve existing behavior for other multi-profile message types.
-            msh.getMessageProfileIdentifier(1)
-                    .getEntityIdentifier()
-                    .setValue(messageState.getEntityIdentifierGroup1());
+      // Preserve existing behavior for other multi-profile message types.
+      msh.getMessageProfileIdentifier(1)
+          .getEntityIdentifier()
+          .setValue(messageState.getEntityIdentifierGroup1());
 
-            msh.getMessageProfileIdentifier(1)
-                    .getNamespaceID()
-                    .setValue(messageState.getNameSpaceIDGroup2());
+      msh.getMessageProfileIdentifier(1)
+          .getNamespaceID()
+          .setValue(messageState.getNameSpaceIDGroup2());
 
-            msh.getMessageProfileIdentifier(1)
-                    .getUniversalID()
-                    .setValue(messageState.getUniversalIDGroup2());
+      msh.getMessageProfileIdentifier(1)
+          .getUniversalID()
+          .setValue(messageState.getUniversalIDGroup2());
 
-            msh.getMessageProfileIdentifier(1)
-                    .getUniversalIDType()
-                    .setValue(messageState.getUniversalIDTypeGroup2());
+      msh.getMessageProfileIdentifier(1)
+          .getUniversalIDType()
+          .setValue(messageState.getUniversalIDTypeGroup2());
 
-            msh.getMessageProfileIdentifier(2)
-                    .getEntityIdentifier()
-                    .setValue(messageState.getEntityIdentifierGroup2());
+      msh.getMessageProfileIdentifier(2)
+          .getEntityIdentifier()
+          .setValue(messageState.getEntityIdentifierGroup2());
 
-            msh.getMessageProfileIdentifier(2)
-                    .getNamespaceID()
-                    .setValue(messageState.getNameSpaceIDGroup2());
+      msh.getMessageProfileIdentifier(2)
+          .getNamespaceID()
+          .setValue(messageState.getNameSpaceIDGroup2());
 
-            msh.getMessageProfileIdentifier(2)
-                    .getUniversalID()
-                    .setValue(messageState.getUniversalIDGroup2());
+      msh.getMessageProfileIdentifier(2)
+          .getUniversalID()
+          .setValue(messageState.getUniversalIDGroup2());
 
-            msh.getMessageProfileIdentifier(2)
-                    .getUniversalIDType()
-                    .setValue(messageState.getUniversalIDTypeGroup2());
-        }
+      msh.getMessageProfileIdentifier(2)
+          .getUniversalIDType()
+          .setValue(messageState.getUniversalIDTypeGroup2());
+    }
   }
 }

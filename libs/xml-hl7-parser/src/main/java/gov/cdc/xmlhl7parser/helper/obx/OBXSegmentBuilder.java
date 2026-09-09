@@ -117,15 +117,11 @@ public class OBXSegmentBuilder {
                 : candidate.getQuestionGroupSeqNbr().trim();
 
         String candidateObservationSubId =
-            candidate.getObservationSubId() == null
-                ? null
-                : candidate.getObservationSubId().trim();
+            candidate.getObservationSubId() == null ? null : candidate.getObservationSubId().trim();
 
-        boolean groupMatches =
-            Objects.equals(candidateGroupSeqNbr, questionGroupSeqNbr);
+        boolean groupMatches = Objects.equals(candidateGroupSeqNbr, questionGroupSeqNbr);
 
-        boolean subIdMatches =
-            Objects.equals(candidateObservationSubId, observationSubId);
+        boolean subIdMatches = Objects.equals(candidateObservationSubId, observationSubId);
 
         if (groupMatches && subIdMatches) {
           obxFound = true;
@@ -151,10 +147,7 @@ public class OBXSegmentBuilder {
       obxFound = false;
       obx5ValueInc = 0;
 
-      obx =
-          orderObservation
-              .getOBSERVATION(orderObservation.getOBSERVATIONAll().size())
-              .getOBX();
+      obx = orderObservation.getOBSERVATION(orderObservation.getOBSERVATIONAll().size()).getOBX();
     }
 
     if (!obxFound) {
@@ -1016,16 +1009,11 @@ public class OBXSegmentBuilder {
         // MMWR Year is represented as a four-digit year (YYYY),
         // even though the messaging datatype is TS.
         if (messageElement.getDataElement().getTsDataType().getYear() != null) {
-          timeOutput =
-              messageElement.getDataElement().getTsDataType().getYear().trim();
+          timeOutput = messageElement.getDataElement().getTsDataType().getYear().trim();
         } else {
-          String rawTime =
-              messageElement.getDataElement().getTsDataType().getTime().toString();
+          String rawTime = messageElement.getDataElement().getTsDataType().getTime().toString();
 
-          timeOutput =
-              rawTime.length() >= 4
-                  ? rawTime.substring(0, 4)
-                  : rawTime;
+          timeOutput = rawTime.length() >= 4 ? rawTime.substring(0, 4) : rawTime;
         }
 
       } else if (messageElement.getDataElement().getTsDataType().getYear() != null) {

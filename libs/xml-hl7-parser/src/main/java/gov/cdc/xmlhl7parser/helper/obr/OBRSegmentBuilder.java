@@ -61,17 +61,17 @@ public class OBRSegmentBuilder {
     } else if (obrField.startsWith("OBR-4.1") && Objects.equals(orderGroupID, "1")) {
       obr.getObr4_UniversalServiceIdentifier().getIdentifier().setValue("68991-9");
       messageState.setUniversalServiceIdentifierGroup1(
-        messageElement.getDataElement().getStDataType().getStringData().trim());
+          messageElement.getDataElement().getStDataType().getStringData().trim());
     } else if (obrField.startsWith("OBR-4.1") && Objects.equals(orderGroupID, "2")) {
       messageState.setUniversalServiceIdentifierGroup2(
-        messageElement.getDataElement().getStDataType().getStringData().trim());
+          messageElement.getDataElement().getStDataType().getStringData().trim());
     } else if (obrField.startsWith("OBR-4.2") && Objects.equals(orderGroupID, "1")) {
       obr.getObr4_UniversalServiceIdentifier().getText().setValue("Epidemiologic Information");
       messageState.setUniversalServiceIDTextGroup1(
-        messageElement.getDataElement().getStDataType().getStringData().trim());
+          messageElement.getDataElement().getStDataType().getStringData().trim());
     } else if (obrField.startsWith("OBR-4.2") && Objects.equals(orderGroupID, "2")) {
       messageState.setUniversalServiceIDTextGroup2(
-        messageElement.getDataElement().getStDataType().getStringData().trim());
+          messageElement.getDataElement().getStDataType().getStringData().trim());
     } else if (obrField.startsWith("OBR-4.3") && Objects.equals(orderGroupID, "1")) {
       obr.getObr4_UniversalServiceIdentifier().getNameOfCodingSystem().setValue("LN");
       messageState.setUniversalServiceIDNameOfCodingSystemGroup1(

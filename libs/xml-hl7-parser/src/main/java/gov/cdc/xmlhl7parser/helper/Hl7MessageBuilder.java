@@ -152,6 +152,23 @@ public class Hl7MessageBuilder {
     pid.getPatientName(0).getNameTypeCode().setValue("S");
     obr.getObr1_SetIDOBR().setValue("1");
 
+    // Preload the NND message version before processing message elements.
+    // OBX routing depends on this value, but MSH-21.1 may otherwise be
+    // encountered after some OBX elements have already been processed.
+    for (int i = 0; i < nbsnndIntermediaryMessage.getMessageElement().size(); i++) {
+      MessageElement element = nbsnndIntermediaryMessage.getMessageElement().get(i);
+
+      if (element.getHl7SegmentField() != null
+          && "MSH-21.1".equals(element.getHl7SegmentField().trim())
+          && "1".equals(element.getOrderGroupId())) {
+
+        messageState.setNndMessageVersion(
+            element.getDataElement().getStDataType().getStringData().trim());
+
+        break;
+      }
+    }
+
     for (int z = 0; z < nbsnndIntermediaryMessage.getMessageElement().size(); z++) {
       if (nbsnndIntermediaryMessage
               .getMessageElement()
@@ -646,10 +663,17 @@ public class Hl7MessageBuilder {
             obx2Inc,
             oruMessage.getPATIENT_RESULT().getORDER_OBSERVATION(0));
       } else if (segmentField.startsWith("OBX")) {
-        processOBXFields(
-            nbsnndIntermediaryMessage.getMessageElement().get(z),
-            oruMessage.getPATIENT_RESULT().getORDER_OBSERVATION(0),
-            messageState);
+        if ("NND_ORU_v2.0".equals(messageState.getNndMessageVersion())) {
+          processOBXFields(
+              nbsnndIntermediaryMessage.getMessageElement().get(z),
+              oruMessage.getPATIENT_RESULT().getORDER_OBSERVATION(1),
+              messageState);
+        } else {
+          processOBXFields(
+              nbsnndIntermediaryMessage.getMessageElement().get(z),
+              oruMessage.getPATIENT_RESULT().getORDER_OBSERVATION(0),
+              messageState);
+        }
       }
 
       if (messageState.getMessageType().contains("Arbo_Case_Map_v1.0")
@@ -779,79 +803,148 @@ public class Hl7MessageBuilder {
         }
       }
 
-      if ("NND_ORU_v2.0".equals(messageState.getNndMessageVersion())) {
-        OBR obrForNND_ORU_v2 = oruMessage.getPATIENT_RESULT().getORDER_OBSERVATION(0).getOBR();
-        obrForNND_ORU_v2.getSetIDOBR().setValue("2");
+      if ("NND_ORU_v2.0".equals(messageState.getNndMessageVersion())
+          && z == nbsnndIntermediaryMessage.getMessageElement().size() - 1) {
 
-        obrForNND_ORU_v2
+        // NND ORU v2 requires two ORDER_OBSERVATION groups:
+        // OBR-1 = Person Subject
+        // OBR-2 = Individual Case Notification
+        OBR obrGroup1 = oruMessage.getPATIENT_RESULT().getORDER_OBSERVATION(0).getOBR();
+
+        OBR obrGroup2 = oruMessage.getPATIENT_RESULT().getORDER_OBSERVATION(1).getOBR();
+
+        // -----------------------------------------------------------------
+        // OBR 1 - Person Subject
+        // -----------------------------------------------------------------
+        obrGroup1.getSetIDOBR().setValue("1");
+
+        obrGroup1
             .getFillerOrderNumber()
             .getEntityIdentifier()
             .setValue(messageState.getEntityIdentifier2());
-        obrForNND_ORU_v2
+
+        obrGroup1
             .getFillerOrderNumber()
             .getNamespaceID()
             .setValue(messageState.getFillerOrderNumberNameSpaceIDGroup2());
-        obrForNND_ORU_v2
+
+        obrGroup1
             .getFillerOrderNumber()
             .getUniversalID()
             .setValue(messageState.getFillerOrderNumberUniversalID2());
-        obrForNND_ORU_v2
+
+        obrGroup1
             .getFillerOrderNumber()
             .getUniversalIDType()
             .setValue(messageState.getFillerOrderNumberUniversalIDType2());
 
-        obrForNND_ORU_v2
+        obrGroup1
             .getUniversalServiceIdentifier()
             .getIdentifier()
             .setValue(messageState.getUniversalServiceIdentifierGroup1());
-        obrForNND_ORU_v2
+
+        obrGroup1
             .getUniversalServiceIdentifier()
             .getText()
             .setValue(messageState.getUniversalServiceIDTextGroup1());
-        obrForNND_ORU_v2
+
+        obrGroup1
             .getUniversalServiceIdentifier()
             .getNameOfCodingSystem()
             .setValue(messageState.getUniversalServiceIDNameOfCodingSystemGroup1());
 
-        obrForNND_ORU_v2
+        // -----------------------------------------------------------------
+        // OBR 2 - Individual Case Notification
+        // -----------------------------------------------------------------
+        obrGroup2.getSetIDOBR().setValue("2");
+
+        obrGroup2
+            .getFillerOrderNumber()
+            .getEntityIdentifier()
+            .setValue(messageState.getEntityIdentifier2());
+
+        obrGroup2
+            .getFillerOrderNumber()
+            .getNamespaceID()
+            .setValue(messageState.getFillerOrderNumberNameSpaceIDGroup2());
+
+        obrGroup2
+            .getFillerOrderNumber()
+            .getUniversalID()
+            .setValue(messageState.getFillerOrderNumberUniversalID2());
+
+        obrGroup2
+            .getFillerOrderNumber()
+            .getUniversalIDType()
+            .setValue(messageState.getFillerOrderNumberUniversalIDType2());
+
+        obrGroup2
             .getUniversalServiceIdentifier()
             .getIdentifier()
             .setValue(messageState.getUniversalServiceIdentifierGroup2());
-        obrForNND_ORU_v2
+
+        obrGroup2
             .getUniversalServiceIdentifier()
             .getText()
-            .setValue(messageState.getUniversalServiceIDTextGroup1());
-        obrForNND_ORU_v2
+            .setValue(messageState.getUniversalServiceIDTextGroup2());
+
+        obrGroup2
             .getUniversalServiceIdentifier()
             .getNameOfCodingSystem()
             .setValue(messageState.getUniversalServiceIDNameOfCodingSystemGroup2());
 
-        // TODO - Validate these two date values
+        // -----------------------------------------------------------------
+        // OBR-7 / OBR-22
+        // -----------------------------------------------------------------
         String dateFormatForObr7 =
             dateFormatUtil.formatDate(
                 messageState.getObservationDateTime(),
-                messageState.getObr7QuestionDataTypeNND(),
                 messageState.getObr7DataType(),
+                messageState.getObr7QuestionDataTypeNND(),
                 "OBR-7.0");
-        obr.getObr7_ObservationDateTime().getTime().setValue(dateFormatForObr7);
 
         String dateFormatForObr22 =
             dateFormatUtil.formatDate(
                 messageState.getResultStatusChgTime(),
-                messageState.getObr7QuestionDataTypeNND(),
                 messageState.getObr7DataType(),
-                "OBR22.0");
-        obr.getObr22_ResultsRptStatusChngDateTime().getTime().setValue(dateFormatForObr22);
+                messageState.getObr7QuestionDataTypeNND(),
+                "OBR-22.0");
 
-        obrForNND_ORU_v2
+        obrGroup1.getObr7_ObservationDateTime().getTime().setValue(dateFormatForObr7);
+
+        obrGroup1.getObr22_ResultsRptStatusChngDateTime().getTime().setValue(dateFormatForObr22);
+
+        obrGroup2.getObr7_ObservationDateTime().getTime().setValue(dateFormatForObr7);
+
+        obrGroup2.getObr22_ResultsRptStatusChngDateTime().getTime().setValue(dateFormatForObr22);
+
+        obrGroup1.getObr25_ResultStatus().setValue(messageState.getResultStatus());
+
+        obrGroup2.getObr25_ResultStatus().setValue(messageState.getResultStatus());
+
+        // -----------------------------------------------------------------
+        // OBR-31 - Reason for Study
+        // -----------------------------------------------------------------
+        obrGroup1
             .getReasonForStudy(0)
             .getIdentifier()
             .setValue(messageState.getReasonForStudyIdentifier2());
-        obrForNND_ORU_v2
+
+        obrGroup1.getReasonForStudy(0).getText().setValue(messageState.getReasonForStudyText2());
+
+        obrGroup1
             .getReasonForStudy(0)
-            .getText()
-            .setValue(messageState.getReasonForStudyText2());
-        obrForNND_ORU_v2
+            .getNameOfCodingSystem()
+            .setValue(messageState.getReasonForStudyNameOfCodingSystem2());
+
+        obrGroup2
+            .getReasonForStudy(0)
+            .getIdentifier()
+            .setValue(messageState.getReasonForStudyIdentifier2());
+
+        obrGroup2.getReasonForStudy(0).getText().setValue(messageState.getReasonForStudyText2());
+
+        obrGroup2
             .getReasonForStudy(0)
             .getNameOfCodingSystem()
             .setValue(messageState.getReasonForStudyNameOfCodingSystem2());
