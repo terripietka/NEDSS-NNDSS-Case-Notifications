@@ -4,27 +4,44 @@ import ca.uhn.hl7v2.HL7Exception;
 import ca.uhn.hl7v2.model.DataTypeException;
 import ca.uhn.hl7v2.model.Type;
 import ca.uhn.hl7v2.model.Varies;
-import ca.uhn.hl7v2.model.v25.datatype.*;
+import ca.uhn.hl7v2.model.v25.datatype.CWE;
+import ca.uhn.hl7v2.model.v25.datatype.DT;
+import ca.uhn.hl7v2.model.v25.datatype.ST;
+import ca.uhn.hl7v2.model.v25.datatype.TS;
+import ca.uhn.hl7v2.model.v25.datatype.TX;
 import ca.uhn.hl7v2.model.v25.group.ORU_R01_ORDER_OBSERVATION;
 import ca.uhn.hl7v2.model.v25.message.ORU_R01;
-import ca.uhn.hl7v2.model.v25.segment.*;
+import ca.uhn.hl7v2.model.v25.segment.MSH;
+import ca.uhn.hl7v2.model.v25.segment.NK1;
+import ca.uhn.hl7v2.model.v25.segment.OBR;
+import ca.uhn.hl7v2.model.v25.segment.OBX;
+import ca.uhn.hl7v2.model.v25.segment.PID;
 import gov.cdc.xmlhl7parser.exception.XmlHl7ParserException;
-import gov.cdc.xmlhl7parser.helper.mapper.*;
+import gov.cdc.xmlhl7parser.helper.mapper.MapLabReportEventToOBR;
+import gov.cdc.xmlhl7parser.helper.mapper.MapToDisRepeat;
+import gov.cdc.xmlhl7parser.helper.mapper.MapToDynamicParentRptToRpt;
+import gov.cdc.xmlhl7parser.helper.mapper.MapToDynamicRootlDiscToRepeat;
+import gov.cdc.xmlhl7parser.helper.mapper.MapToQuestionMap;
+import gov.cdc.xmlhl7parser.helper.mapper.MapToRepeatToMultiNND;
 import gov.cdc.xmlhl7parser.helper.msh.MSHSegmentBuilder;
 import gov.cdc.xmlhl7parser.helper.nk1.NK1SegmentBuilder;
 import gov.cdc.xmlhl7parser.helper.obr.OBRSegmentBuilder;
 import gov.cdc.xmlhl7parser.helper.obx.OBXSegmentBuilder;
 import gov.cdc.xmlhl7parser.helper.pid.PIDSegmentBuilder;
-import gov.cdc.xmlhl7parser.model.*;
+import gov.cdc.xmlhl7parser.model.EIElement;
 import gov.cdc.xmlhl7parser.model.Obx.ObxRepeatingElement;
-import gov.cdc.xmlhl7parser.model.generated.jaxb.*;
+import gov.cdc.xmlhl7parser.model.ParentLink;
+import gov.cdc.xmlhl7parser.model.generated.jaxb.LabReportEvent;
+import gov.cdc.xmlhl7parser.model.generated.jaxb.MessageElement;
+import gov.cdc.xmlhl7parser.model.generated.jaxb.NBSNNDIntermediaryMessage;
 import gov.cdc.xmlhl7parser.util.Hl7DateFormatUtil;
 import gov.cdc.xmlhl7parser.validator.Hl7Validator;
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.JAXBException;
 import jakarta.xml.bind.Unmarshaller;
 import java.io.StringReader;
-import java.util.*;
+import java.util.List;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -354,18 +371,18 @@ public class Hl7MessageBuilder {
               .trim()
               .equals("1")) {
             std121ObxInc = obx1Inc;
-            std121obxOrderGroupId = 0;
+            std121obxOrderGroupId = obx.getOBSERVATIONAll().size();
             messageState.setObx1Inc(obx1Inc++);
           } else {
             std121ObxInc = obx2Inc;
-            std121obxOrderGroupId = 1;
+            std121obxOrderGroupId = obx.getOBSERVATIONAll().size();
             messageState.setObx2Inc(obx2Inc++);
           }
         }
         obx.getOBSERVATION(std121obxOrderGroupId)
             .getOBX()
             .getSetIDOBX()
-            .setValue(String.valueOf(std121ObxInc + 1));
+            .setValue(String.valueOf(std121obxOrderGroupId + 1));
         obx.getOBSERVATION(std121obxOrderGroupId).getOBX().getValueType().setValue("CWE");
         obx.getOBSERVATION(std121obxOrderGroupId)
             .getOBX()
@@ -403,43 +420,12 @@ public class Hl7MessageBuilder {
             .getObservationIdentifier()
             .getAlternateText()
             .setValue(
-                nbsnndIntermediaryMessage.getMessageElement().get(z).getQuestionLabelNND().trim());
+                nbsnndIntermediaryMessage.getMessageElement().get(z).getQuestionLabel().trim());
         obx.getOBSERVATION(std121obxOrderGroupId)
             .getOBX()
             .getObservationIdentifier()
             .getNameOfAlternateCodingSystem()
             .setValue("L");
-        if (!nbsnndIntermediaryMessage
-            .getMessageElement()
-            .get(z)
-            .getObservationSubID()
-            .trim()
-            .isEmpty()) {
-          obx.getOBSERVATION(std121obxOrderGroupId)
-              .getOBX()
-              .getObservationSubID()
-              .setValue(
-                  nbsnndIntermediaryMessage
-                      .getMessageElement()
-                      .get(z)
-                      .getObservationSubID()
-                      .trim());
-        } else if (!nbsnndIntermediaryMessage
-            .getMessageElement()
-            .get(z)
-            .getQuestionGroupSeqNbr()
-            .trim()
-            .isEmpty()) {
-          obx.getOBSERVATION(std121obxOrderGroupId)
-              .getOBX()
-              .getObservationSubID()
-              .setValue(
-                  nbsnndIntermediaryMessage
-                      .getMessageElement()
-                      .get(z)
-                      .getQuestionGroupSeqNbr()
-                      .trim());
-        }
 
         std121ObsValue += 1;
         String codedValue = "";
@@ -480,7 +466,7 @@ public class Hl7MessageBuilder {
                   .get(z)
                   .getDataElement()
                   .getCweDataType()
-                  .getCweCodedValue()
+                  .getCweCodedValueDescription()
                   .trim();
         }
         if (!nbsnndIntermediaryMessage
@@ -551,55 +537,30 @@ public class Hl7MessageBuilder {
                   .getCweLocalCodedValueCodingSystem()
                   .trim();
         }
-        if (!nbsnndIntermediaryMessage
-            .getMessageElement()
-            .get(z)
-            .getDataElement()
-            .getCweDataType()
-            .getCweOriginalText()
-            .trim()
-            .isEmpty()) {
-          originalOtherText =
-              nbsnndIntermediaryMessage
-                  .getMessageElement()
-                  .get(z)
-                  .getDataElement()
-                  .getCweDataType()
-                  .getCweOriginalText()
-                  .trim();
-        }
-        Type obxValue =
-            obx.getOBSERVATION(std121obxOrderGroupId)
-                .getOBX()
-                .getObservationValue(std121ObsValue)
-                .getData();
-        TX textData;
+        String cweOriginalText =
+            nbsnndIntermediaryMessage
+                .getMessageElement()
+                .get(z)
+                .getDataElement()
+                .getCweDataType()
+                .getCweOriginalText();
 
-        if (obxValue instanceof TX) {
-          textData = (TX) obxValue;
-        } else {
-          textData = new TX(obx.getMessage());
+        if (cweOriginalText != null && !cweOriginalText.trim().isEmpty()) {
+          originalOtherText = cweOriginalText.trim();
         }
+        CWE cweData = new CWE(obx.getMessage());
 
-        String value =
-            codedValue
-                + "^"
-                + codedValueDescription
-                + "^"
-                + codedValueCodingSystem
-                + "^"
-                + localCodedValue
-                + "^"
-                + localCodedValueDescription
-                + "^"
-                + localCodedValueCodingSystem
-                + "^"
-                + originalOtherText;
-        textData.setValue(value);
+        cweData.getIdentifier().setValue(codedValue);
+        cweData.getText().setValue(codedValueDescription);
+        cweData.getNameOfCodingSystem().setValue(codedValueCodingSystem);
+        cweData.getAlternateIdentifier().setValue(localCodedValue);
+        cweData.getAlternateText().setValue(localCodedValueDescription);
+        cweData.getNameOfAlternateCodingSystem().setValue(localCodedValueCodingSystem);
+        cweData.getOriginalText().setValue(originalOtherText);
         obx.getOBSERVATION(std121obxOrderGroupId)
             .getOBX()
             .getObservationValue(std121ObsValue)
-            .setData(textData);
+            .setData(cweData);
         obx.getOBSERVATION(std121obxOrderGroupId)
             .getOBX()
             .getObservationResultStatus()
@@ -735,13 +696,15 @@ public class Hl7MessageBuilder {
           && !messageState.getMessageType().contains("Var_Case_Map_v2.0")) {
         // Pushing this down to the last index
         if (z == nbsnndIntermediaryMessage.getMessageElement().size() - 1) {
-          OBX obxForGenV2 = obx.getOBSERVATION(obx.getOBSERVATIONAll().size()).getOBX();
+
+          int inv177ObxOrderGroupId = obx.getOBSERVATIONAll().size();
+          OBX obxForGenV2 = obx.getOBSERVATION(inv177ObxOrderGroupId).getOBX();
 
           var obxElement = new ObxRepeatingElement();
           obxElement.setElementUid("77970-2");
           obxRepeatingElementArrayList.add(obxElement);
           messageState.setObx2Inc(messageState.getObxInc() + 1);
-          obxForGenV2.getObx1_SetIDOBX().setValue(String.valueOf(messageState.getObxInc()));
+          obxForGenV2.getObx1_SetIDOBX().setValue(String.valueOf(inv177ObxOrderGroupId + 1));
 
           obxForGenV2.getValueType().setValue("DT");
           obxForGenV2.getObservationResultStatus().setValue("F");
@@ -761,7 +724,14 @@ public class Hl7MessageBuilder {
           // out.PATIENT_RESULT.ORDER_OBSERVATION[0].OBSERVATION[1].OBX[obx2Inc].ObservationValue[0]
           // = inv177Date;
           DT dt = new DT(obxForGenV2.getMessage());
-          dt.setValue(messageState.getInv177Date());
+          String obr7DateTime = messageState.getObservationDateTime();
+          if (obr7DateTime != null && !obr7DateTime.isEmpty()) {
+            String obr7Date = obr7DateTime.substring(0, 10).replace("-", "");
+            dt.setValue(obr7Date);
+          } else {
+            // Preserve existing behavior if OBR-7 is unavailable.
+            dt.setValue(messageState.getInv177Date());
+          }
           obxForGenV2.getObservationValue(0).setData(dt);
           //                    inv177Date = "";
         }
@@ -1105,39 +1075,20 @@ public class Hl7MessageBuilder {
             stType = new ST(oruMessage);
           }
 
-          Type stobxValue2 =
-              oruMessage
-                  .getPATIENT_RESULT()
-                  .getORDER_OBSERVATION(i)
-                  .getOBSERVATION(j)
-                  .getOBX()
-                  .getObservationValue(1)
-                  .getData();
-          ST stType1;
+          ST stType1 = null;
+          int observationValue1Size = 0;
 
-          if (stobxValue2 instanceof ST) {
-            stType1 = (ST) stobxValue2;
-          } else {
-            stType1 = new ST(oruMessage);
+          OBX currentObx =
+              oruMessage.getPATIENT_RESULT().getORDER_OBSERVATION(i).getOBSERVATION(j).getOBX();
+
+          if (currentObx.getObservationValueReps() > 1) {
+            Type stobxValue2 = currentObx.getObservationValue(1).getData();
+
+            if (stobxValue2 instanceof ST) {
+              stType1 = (ST) stobxValue2;
+              observationValue1Size = stType1.getValue() != null ? stType1.getValue().length() : 0;
+            }
           }
-
-          Type stobxValue3 =
-              oruMessage
-                  .getPATIENT_RESULT()
-                  .getORDER_OBSERVATION(i)
-                  .getOBSERVATION(j)
-                  .getOBX()
-                  .getObservationValue(1)
-                  .getData();
-          ST stType2;
-
-          if (stobxValue3 instanceof ST) {
-            stType2 = (ST) stobxValue3;
-          } else {
-            stType2 = new ST(oruMessage);
-          }
-
-          int observationValue1Size = stType2.getValue() != null ? stType2.getValue().length() : 0;
 
           if (obxValue != null
               && obxValue.contains("Other Drugs Used^2.16.840.1.114222.4.5.274")
@@ -1173,14 +1124,10 @@ public class Hl7MessageBuilder {
                   .getObservationValue(0)
                   .setData(stType);
             }
-            stType1.setValue("");
-            oruMessage
-                .getPATIENT_RESULT()
-                .getORDER_OBSERVATION(i)
-                .getOBSERVATION(j)
-                .getOBX()
-                .getObservationValue(1)
-                .setData(stType1);
+            if (stType1 != null) {
+              stType1.setValue("");
+              currentObx.getObservationValue(1).setData(stType1);
+            }
           } else if ("56831-1".equals(obxIdIdentifier)
               && obxValue != null
               && obxValue.contains(OTH_SANDS_REPLACE)) {
@@ -1192,24 +1139,15 @@ public class Hl7MessageBuilder {
                 .getOBX()
                 .getObservationValue(0)
                 .setData(stType);
-
-            stType1.setValue("");
-            oruMessage
-                .getPATIENT_RESULT()
-                .getORDER_OBSERVATION(i)
-                .getOBSERVATION(j)
-                .getOBX()
-                .getObservationValue(1)
-                .setData(stType1);
+            if (stType1 != null) {
+              stType1.setValue("");
+              currentObx.getObservationValue(1).setData(stType1);
+            }
           } else if ("56831-1".equals(obxIdIdentifier) && observationValue1Size > 0) {
-            stType1.setValue("");
-            oruMessage
-                .getPATIENT_RESULT()
-                .getORDER_OBSERVATION(i)
-                .getOBSERVATION(j)
-                .getOBX()
-                .getObservationValue(1)
-                .setData(stType1);
+            if (stType1 != null) {
+              stType1.setValue("");
+              currentObx.getObservationValue(1).setData(stType1);
+            }
           }
         }
       }

@@ -3,7 +3,19 @@ package gov.cdc.xmlhl7parser.helper.obx;
 import ca.uhn.hl7v2.HL7Exception;
 import ca.uhn.hl7v2.model.DataTypeException;
 import ca.uhn.hl7v2.model.Type;
-import ca.uhn.hl7v2.model.v25.datatype.*;
+import ca.uhn.hl7v2.model.v25.datatype.CE;
+import ca.uhn.hl7v2.model.v25.datatype.CWE;
+import ca.uhn.hl7v2.model.v25.datatype.CX;
+import ca.uhn.hl7v2.model.v25.datatype.DT;
+import ca.uhn.hl7v2.model.v25.datatype.ID;
+import ca.uhn.hl7v2.model.v25.datatype.IS;
+import ca.uhn.hl7v2.model.v25.datatype.NM;
+import ca.uhn.hl7v2.model.v25.datatype.SN;
+import ca.uhn.hl7v2.model.v25.datatype.ST;
+import ca.uhn.hl7v2.model.v25.datatype.TS;
+import ca.uhn.hl7v2.model.v25.datatype.TX;
+import ca.uhn.hl7v2.model.v25.datatype.XPN;
+import ca.uhn.hl7v2.model.v25.datatype.XTN;
 import ca.uhn.hl7v2.model.v25.group.ORU_R01_ORDER_OBSERVATION;
 import ca.uhn.hl7v2.model.v25.segment.OBX;
 import gov.cdc.xmlhl7parser.helper.MessageState;
@@ -45,7 +57,7 @@ public class OBXSegmentBuilder {
 
     // Use state variables from MessageState
     int obxOrderGroupID = messageState.getObxOrderGroupID();
-    int obxInc = messageState.getObxInc();
+    int obxInc;
     int obx5ValueInc = messageState.getObx5ValueInc();
     String obx5ObservationSubID = messageState.getObx5ObservationSubID();
     boolean obxFound = messageState.isObxFound();
@@ -79,6 +91,9 @@ public class OBXSegmentBuilder {
       messageState.setObxInc(messageState.getObx2Inc());
       messageState.setObxOrderGroupID(1);
     }
+
+    obxInc = messageState.getObxInc();
+
     List<ObxRepeatingElement> obxRepeatingElementArrayList =
         messageState.getObxRepeatingElementArrayList();
 
@@ -121,7 +136,9 @@ public class OBXSegmentBuilder {
 
         boolean groupMatches = Objects.equals(candidateGroupSeqNbr, questionGroupSeqNbr);
 
-        boolean subIdMatches = Objects.equals(candidateObservationSubId, observationSubId);
+        boolean subIdMatches =
+            questionIdentifierNND.equals("STD121")
+                || Objects.equals(candidateObservationSubId, observationSubId);
 
         if (groupMatches && subIdMatches) {
           obxFound = true;
@@ -140,14 +157,23 @@ public class OBXSegmentBuilder {
     OBX obx;
 
     if (obxFound && matchedElement != null) {
+      // Reuse an existing physical OBX for a repeating value.
       int idx = matchedElement.getObxInc();
       obx = orderObservation.getOBSERVATION(idx).getOBX();
+
+      // OBX-1 is 1-based.
+      obxInc = idx + 1;
+
     } else {
-      // No matching repeating element exists, so create a new OBX.
+      // No matching repeating element exists, so create a new physical OBX.
       obxFound = false;
       obx5ValueInc = 0;
 
-      obx = orderObservation.getOBSERVATION(orderObservation.getOBSERVATIONAll().size()).getOBX();
+      int idx = orderObservation.getOBSERVATIONAll().size();
+      obx = orderObservation.getOBSERVATION(idx).getOBX();
+
+      // OBX-1 is the 1-based physical position in the message.
+      obxInc = idx + 1;
     }
 
     if (!obxFound) {
@@ -217,7 +243,9 @@ public class OBXSegmentBuilder {
 
     obx.getSetIDOBX().setValue(String.valueOf(obxInc));
 
-    if (messageElement.getObservationSubID() != null) {
+    if (messageElement.getObservationSubID() != null
+        && !messageElement.getObservationSubID().trim().isEmpty()
+        && !questionIdentifierNND.equals("STD121")) {
       obx.getObservationSubID().setValue(messageElement.getObservationSubID().trim());
     }
 
@@ -242,17 +270,24 @@ public class OBXSegmentBuilder {
       obx.getObservationIdentifier().getNameOfAlternateCodingSystem().setValue("L");
 
       if (messageState.getMessageType().contains("CongenitalSyphilis_MMG_V1.0")
-              && questionIdentifier.equals("LAB588")
-          || questionIdentifier.equals("INV290")
-          || questionIdentifier.equals("INV291")
-          || questionIdentifier.equals("STD123")
-          || questionIdentifier.equals("LAB167")
-          || questionIdentifier.equals("STD123_1")) {
+          && (questionIdentifier.equals("LAB588")
+              || questionIdentifier.equals("INV290")
+              || questionIdentifier.equals("INV291")
+              || questionIdentifier.equals("STD123")
+              || questionIdentifier.equals("LAB167")
+              || questionIdentifier.equals("STD123_1"))) {
         obx.getObservationSubID().setValue("-" + messageElement.getObservationSubID().trim());
-      } else if (messageElement.getObservationSubID() != null) {
+      } else if (messageElement.getObservationSubID() != null
+          && !messageElement.getObservationSubID().trim().isEmpty()
+          && !questionIdentifierNND.equals("STD121")) {
         obx.getObservationSubID().setValue(messageElement.getObservationSubID().trim());
-      } else if (messageElement.getQuestionGroupSeqNbr() != null) {
+      } else if (messageElement.getQuestionGroupSeqNbr() != null
+          && !messageElement.getQuestionGroupSeqNbr().trim().isEmpty()
+          && !questionIdentifierNND.equals("STD121")) {
         obx.getObservationSubID().setValue(messageElement.getQuestionGroupSeqNbr().trim());
+      }
+      if (questionIdentifier.equals("INV515")) {
+        obx.getObservationSubID().setValue("1");
       }
     }
     // XPN datatype
@@ -912,7 +947,7 @@ public class OBXSegmentBuilder {
 
           cwe.getOriginalText().setValue(originalText); // OBX-5.9
 
-          obx.getObservationValue(obx.getObservationValue().length).setData(cwe);
+          obx.getObservationValue(obx5ValueInc).setData(cwe);
         }
       }
     }
@@ -1067,7 +1102,7 @@ public class OBXSegmentBuilder {
             || existingObservationIdentifier.equals("PHC1308"))) {
       messageState.setDrugCounter(messageState.getDrugCounter() + 1);
       String codedText = "";
-      String observationValue = obx.getObservationValue(0).toString().trim();
+      String observationValue = obx.getObservationValue(0).getData().encode().trim();
       switch (existingObservationIdentifier) {
         case "2653" -> {
           codedText =
@@ -1118,38 +1153,87 @@ public class OBXSegmentBuilder {
           obx.getObservationIdentifier().getIdentifier().setValue(codedText);
         }
       }
-      obx.getObservationSubID().setValue("2");
+
+      // ---------------------------------------------------------------------
+      // STD115 - Drugs Used
+      // Use the current OBX for the primary observation.
+      // ---------------------------------------------------------------------
       obx.getObservationIdentifier().getIdentifier().setValue("STD115");
       obx.getObservationIdentifier().getText().setValue("Drugs Used");
       obx.getObservationIdentifier().getNameOfCodingSystem().setValue("2.16.840.1.114222.4.5.232");
       obx.getObservationIdentifier().getAlternateIdentifier().setValue("STD115");
       obx.getObservationIdentifier().getAlternateText().setValue("Drugs Used");
       obx.getObservationIdentifier().getNameOfAlternateCodingSystem().setValue("L");
-      obx.getObservationSubID().setValue(String.valueOf(messageState.getDrugCounter()));
-      obxInc = obxInc + 1;
-      messageState.setObx2Inc(messageState.getObx2Inc() + 1);
-      obx.getValueType().setValue("CWE");
-      obx.getSetIDOBX().setValue(String.valueOf(obxInc + 1));
-      obx.getObservationSubID().setValue(String.valueOf(messageState.getDrugCounter()));
 
-      Type obxValue = obx.getObservationValue(0).getData();
-      ST st;
-      if (obxValue instanceof ST) {
-        st = (ST) obxValue;
+      obx.getValueType().setValue("CWE");
+      obx.getObservationSubID().setValue(String.valueOf(messageState.getDrugCounter()));
+      obx.getObservationResultStatus().setValue("F");
+
+      // Build OBX-5 for STD115 from the drug code determined above.
+      String[] drugParts = codedText.split("\\^", 3);
+
+      Type existingDrugValue = obx.getObservationValue(0).getData();
+      CWE drugValue;
+
+      if (existingDrugValue instanceof CWE) {
+        drugValue = (CWE) existingDrugValue;
       } else {
-        st = new ST(obx.getMessage());
+        drugValue = new CWE(obx.getMessage());
       }
 
-      st.setValue(observationValue);
-      obx.getObservationValue(0).setData(st);
+      drugValue.getIdentifier().setValue(drugParts[0]);
 
-      obx.getObservationIdentifier().getIdentifier().setValue("STD116");
-      obx.getObservationIdentifier().getText().setValue("Drugs Used Indicator");
-      obx.getObservationIdentifier().getNameOfCodingSystem().setValue("2.16.840.1.114222.4.5.232");
-      obx.getObservationIdentifier().getAlternateIdentifier().setValue("STD116");
-      obx.getObservationIdentifier().getAlternateText().setValue("Drugs Used Indicator");
-      obx.getObservationIdentifier().getNameOfAlternateCodingSystem().setValue("L");
-      obx.getObservationResultStatus().setValue("F");
+      if (drugParts.length > 1) {
+        drugValue.getText().setValue(drugParts[1]);
+      }
+      if (drugParts.length > 2) {
+        drugValue.getNameOfCodingSystem().setValue(drugParts[2]);
+      }
+
+      obx.getObservationValue(0).setData(drugValue);
+
+      // ---------------------------------------------------------------------
+      // STD116 - Drugs Used Indicator
+      // Create a NEW OBX instead of overwriting STD115.
+      // ---------------------------------------------------------------------
+      obxInc = obxInc + 1;
+
+      OBX indicatorObx =
+          orderObservation.getOBSERVATION(orderObservation.getOBSERVATIONAll().size()).getOBX();
+
+      indicatorObx.getSetIDOBX().setValue(String.valueOf(obxInc));
+      indicatorObx.getValueType().setValue("CWE");
+      indicatorObx.getObservationSubID().setValue(String.valueOf(messageState.getDrugCounter()));
+
+      indicatorObx.getObservationIdentifier().getIdentifier().setValue("STD116");
+      indicatorObx.getObservationIdentifier().getText().setValue("Drugs Used Indicator");
+      indicatorObx
+          .getObservationIdentifier()
+          .getNameOfCodingSystem()
+          .setValue("2.16.840.1.114222.4.5.232");
+      indicatorObx.getObservationIdentifier().getAlternateIdentifier().setValue("STD116");
+      indicatorObx.getObservationIdentifier().getAlternateText().setValue("Drugs Used Indicator");
+      indicatorObx.getObservationIdentifier().getNameOfAlternateCodingSystem().setValue("L");
+
+      String[] indicatorParts = observationValue.split("\\^", 3);
+
+      CWE indicatorValue = new CWE(indicatorObx.getMessage());
+      indicatorValue.getIdentifier().setValue(indicatorParts[0]);
+
+      if (indicatorParts.length > 1) {
+        indicatorValue.getText().setValue(indicatorParts[1]);
+      }
+      if (indicatorParts.length > 2) {
+        indicatorValue.getNameOfCodingSystem().setValue(indicatorParts[2]);
+      }
+
+      indicatorObx.getObservationValue(0).setData(indicatorValue);
+      indicatorObx.getObservationResultStatus().setValue("F");
+
+      // One incoming drug element now creates TWO physical OBX segments.
+      // The normal !obxFound block below accounts for the first;
+      // account for the additional STD116 here.
+      messageState.setObx2Inc(messageState.getObx2Inc() + 1);
     }
 
     if (!obxFound) {
